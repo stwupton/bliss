@@ -35,6 +35,7 @@ A simple use case example:
 
         })
 
+        ..start();
     }
 
 ## Features and bugs
