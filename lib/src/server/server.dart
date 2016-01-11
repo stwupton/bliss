@@ -13,7 +13,7 @@ class Server {
   StaticHandler _staticHandler;
   bool get _hasStaticHandler => _staticHandler != null;
 
-  List<Handler> _handlers = [];
+  List<_Handler> _handlers = [];
   bool get _hasHandlers => _handlers.isNotEmpty;
 
   Server([this.address, this.port]);
@@ -46,10 +46,9 @@ class Server {
 
   /// Add dynamic handler to run task and/or respond to requests.
   /// 
-  /// The [path] can contain variable parts that can be handled with the [task]. These parts can be declared in one of three ways:
+  /// The [path] can contain variable parts that can be handled with the [task]. These parts can be declared in one of two ways:
   /// 1. `/:single` results in `{"single": ...}`
-  /// 2. `/:nParts{2}` results in `{"nParts": ["...", "..."]}`
-  /// 3. `/:unknown{.}` results in `{"unknown": [...]}`
+  /// 2. `/:multipleParts{2}` results in `{"multipleParts": ["...", "..."]}`
   /// 
   /// The [task] can take either two parameters or just one. The first required parameter is of type [Map] which gives the task access to the variables declared in the [path] and/or the payload of the request. The second optional parameter is the [HttpRequest] that the server received. If the payload of the request is not in JSON format, then it gets passed to the task as a [String] with a key depending on what the method is: `{"<method>_data": "..."}`.
   /// 
@@ -60,14 +59,13 @@ class Server {
   ///     void main() {
   ///       
   ///       Server server = new Server()
-  ///           ..addHandler('PUT', '/:trail{.}/end', (Map data) => ...)
-  ///           ..addHandler('POST', '/example/:numbered{3}', (_, HttpRequest request) => ...)
+  ///           ..addHandler('POST', '/example/:multi{3}', (_, HttpRequest request) => ...)
   ///           ..addHandler('GET', 'test/:single', (Map data, HttpRequest request) => ...);
   /// 
   ///     }
   void addHandler(String method, String path, Function task) {
 
-    final Handler handler = new Handler(method, path, task);
+    final _Handler handler = new _Handler(method, path, task);
     if (!_isDuplicate(handler)) _handlers.add(handler);
 
   }
@@ -80,12 +78,13 @@ class Server {
 
   }
 
-  bool _isDuplicate(Handler newHandler) {
+  // Check that there are no other handler with the same method and path
+  bool _isDuplicate(_Handler newHandler) {
 
-    for (final Handler handler in _handlers) {
+    for (final _Handler handler in _handlers) {
 
       if (newHandler.method == handler.method &&
-          newHandler.path == handler.path)
+          newHandler.queryRE == handler.queryRE)
         return false;
 
     }
