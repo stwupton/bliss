@@ -1,5 +1,7 @@
 library bliss.server;
 
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 part 'handler.dart';
@@ -7,7 +9,7 @@ part 'static_handler.dart';
 
 class Server {
 
-  InternetAddress address = InternetAddress.LOOPBACK_IP_V4;
+  var address = InternetAddress.LOOPBACK_IP_V4;
   int port = 4040;
 
   StaticHandler _staticHandler;
@@ -17,32 +19,6 @@ class Server {
   bool get _hasHandlers => _handlers.isNotEmpty;
 
   Server([this.address, this.port]);
-
-  /// Starts the server and responds to requests based off the static file handler (if set) and the dynamic handlers.
-  void start() {
-
-    HttpServer.bind(address, port).then((HttpServer server) {
-      server.listen((HttpRequest request) {
-        _handle(request);
-      });
-    });
-
-  }
-
-  /// Set static file handler.
-  /// 
-  /// Define the path to the [webDirectory] that contains all static resources. 
-  /// [defaults] are the paths of the default files that you want to respond with if the requested path is a directory.
-  /// [errorResponses] are the error codes and the path of the file that should respond to that error code. Example: `{404: "404.html"}`
-  void setStaticHandler(String webDirectory, 
-      {List<String> defaults, 
-      Map<int, String> errorResponses}) {
-
-    _staticHandler = new StaticHandler(webDirectory, 
-        defaults: defaults ?? ['index.html'], 
-        errorResponses: errorResponses ?? {});
-
-  }
 
   /// Add dynamic handler to run task and/or respond to requests.
   /// 
@@ -71,10 +47,19 @@ class Server {
   }
 
   // Check request against all handlers to exucute appropriate function.
-  // TODO
   void _handle(HttpRequest request) {
 
-    
+    if (!_hasHandlers) return;
+
+    for (_Handler handler in _handlers) {
+      if (handler.isMatch(request.method, request.uri.path)) {
+        handler.execute(request);
+        return;
+      }
+    }
+
+    request.response..statusCode = HttpStatus.NOT_FOUND
+        ..close();
 
   }
 
@@ -84,12 +69,38 @@ class Server {
     for (final _Handler handler in _handlers) {
 
       if (newHandler.method == handler.method &&
-          newHandler.queryRE == handler.queryRE)
-        return false;
+          newHandler.pathRE == handler.pathRE)
+        return true;
 
     }
 
-    return true;
+    return false;
+
+  }
+
+  /// Set static file handler.
+  /// 
+  /// Define the path to the [webDirectory] that contains all static resources. 
+  /// [defaults] are the paths of the default files that you want to respond with if the requested path is a directory.
+  /// [errorResponses] are the error codes and the path of the file that should respond to that error code. Example: `{404: "404.html"}`
+  void setStaticHandler(String webDirectory, 
+      {List<String> defaults, 
+      Map<int, String> errorResponses}) {
+
+    _staticHandler = new StaticHandler(webDirectory, 
+        defaults: defaults ?? ['index.html'], 
+        errorResponses: errorResponses ?? {});
+
+  }
+
+  /// Starts the server and responds to requests based off the static file handler (if set) and the dynamic handlers.
+  void start() {
+
+    HttpServer.bind(address, port).then((HttpServer server) {
+      server.listen((HttpRequest request) {
+        _handle(request);
+      });
+    });
 
   }
 
