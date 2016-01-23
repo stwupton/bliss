@@ -7,13 +7,12 @@ import 'package:bliss/bliss.dart';
 void main() {
   
   Server server = new Server('localhost', 4040)
-
-      ..addHandler('gEt', '/card/:id/:name{2}', collate)
-
-      ..start();
+    ..setStaticHandler('web')
+    ..addHandler('get', '/api/:example', returnData)
+    ..start(); // Run the server to start listening for requests
 
 }
 
-Future collate(data) async {
-  return "${data['name'][0]} ${data['name'][1]}: has id ${data['id']}";
-}
+// You can use asynchronous function for the handler task's and it will await 
+// for the response.
+Future returnData(data) async => data;

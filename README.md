@@ -6,7 +6,7 @@ An easy to learn server side framework for Dart.
 
 The purpose of this package is to be used internally at Indecks, but to also be extendable enough to be used in other projects. It can be used for serving static files and/or handling dynamic requests.
 
-## Usage (Aims)
+## Usage
 
 A simple use case example:
 
@@ -17,8 +17,7 @@ A simple use case example:
       Server server = new Server()
         ..setStaticHandler(
             'web',
-            defaults: ['index.html'], 
-            404: '/404.html')
+            defaults: ['index.html'])
 
         ..addHandler('GET', '/api/user/:id', (Map data) {
 
@@ -37,6 +36,11 @@ A simple use case example:
 
         ..start();
     }
+
+## Planned Features
+- SSL support
+- Define specific codec for request payloads
+- WebSocket handlers
 
 ## Features and bugs
 

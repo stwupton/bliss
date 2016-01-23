@@ -1,0 +1,30 @@
+* {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  padding: 20px 10px 0 10px;
+}
+
+h1, p {
+  text-align: center;
+  font-family: 'Roboto';
+}
+
+h1 {
+  font-weight: 300;
+  margin: 0 0 10px 0;
+  color: #59B1FD;
+}
+
+p {
+  margin: 0 0 5px 0;
+}
+
+#github-container {
+  max-width: 500px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 20px 0 0 0;
+}

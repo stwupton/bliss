@@ -4,18 +4,19 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:mime/mime.dart';
+
 part 'handler.dart';
 part 'static_handler.dart';
 
 class Server {
 
   var address = InternetAddress.LOOPBACK_IP_V4;
-  int port = 4040;
-
-  StaticHandler _staticHandler;
-  bool get _hasStaticHandler => _staticHandler != null;
-
+  int port = 80;
+  _StaticHandler _staticHandler;
   List<_Handler> _handlers = [];
+
+  bool get _hasStaticHandler => _staticHandler != null;
   bool get _hasHandlers => _handlers.isNotEmpty;
 
   Server([this.address, this.port]);
@@ -24,7 +25,7 @@ class Server {
   /// 
   /// The [path] can contain variable parts that can be handled with the [task]. These parts can be declared in one of two ways:
   /// 1. `/:single` results in `{"single": ...}`
-  /// 2. `/:multipleParts{2}` results in `{"multipleParts": ["...", "..."]}`
+  /// 2. `/:multipleParts{2}` results in `{"multipleParts": [..., ...]}`
   /// 
   /// The [task] can take either two parameters or just one. The first required parameter is of type [Map] which gives the task access to the variables declared in the [path] and/or the payload of the request. The second optional parameter is the [HttpRequest] that the server received. If the payload of the request is not in JSON format, then it gets passed to the task as a [String] with a key depending on what the method is: `{"<method>_data": "..."}`.
   /// 
@@ -49,17 +50,22 @@ class Server {
   // Check request against all handlers to exucute appropriate function.
   void _handle(HttpRequest request) {
 
-    if (!_hasHandlers) return;
-
-    for (_Handler handler in _handlers) {
-      if (handler.isMatch(request.method, request.uri.path)) {
-        handler.execute(request);
-        return;
+    if (_hasHandlers) {
+      for (_Handler handler in _handlers) {
+        if (handler.isMatch(request.method, request.uri.path)) 
+          return handler.execute(request);
       }
     }
 
-    request.response..statusCode = HttpStatus.NOT_FOUND
-        ..close();
+    if (_hasStaticHandler) {
+      if (_staticHandler.hasResource(request.uri.path) && 
+          request.method == 'GET') 
+        return _staticHandler.serveResource(request);
+    }
+
+    request.response
+      ..statusCode = HttpStatus.NOT_FOUND
+      ..close();
 
   }
 
@@ -67,11 +73,9 @@ class Server {
   bool _isDuplicate(_Handler newHandler) {
 
     for (final _Handler handler in _handlers) {
-
       if (newHandler.method == handler.method &&
           newHandler.pathRE == handler.pathRE)
         return true;
-
     }
 
     return false;
@@ -82,14 +86,10 @@ class Server {
   /// 
   /// Define the path to the [webDirectory] that contains all static resources. 
   /// [defaults] are the paths of the default files that you want to respond with if the requested path is a directory.
-  /// [errorResponses] are the error codes and the path of the file that should respond to that error code. Example: `{404: "404.html"}`
   void setStaticHandler(String webDirectory, 
-      {List<String> defaults, 
-      Map<int, String> errorResponses}) {
+      {List<String> defaults: const ['index.html']}) {
 
-    _staticHandler = new StaticHandler(webDirectory, 
-        defaults: defaults ?? ['index.html'], 
-        errorResponses: errorResponses ?? {});
+    _staticHandler = new _StaticHandler(webDirectory, defaults);
 
   }
 
