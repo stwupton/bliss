@@ -11,19 +11,22 @@ part 'static_handler.dart';
 
 class Server {
 
-  var address = InternetAddress.LOOPBACK_IP_V4;
-  int port = 80;
+  var address;
+  int port;
   _StaticHandler _staticHandler;
   List<_Handler> _handlers = [];
 
   bool get _hasStaticHandler => _staticHandler != null;
   bool get _hasHandlers => _handlers.isNotEmpty;
 
-  Server([this.address, this.port]);
+  Server([var address, this.port = 80]) {
+    this.address = address ?? InternetAddress.ANY_IP_V6;
+  }
 
   /// Add dynamic handler to run task and/or respond to requests.
   /// 
   /// The [path] can contain variable parts that can be handled with the [task]. These parts can be declared in one of two ways:
+  /// 
   /// 1. `/:single` results in `{"single": ...}`
   /// 2. `/:multipleParts{2}` results in `{"multipleParts": [..., ...]}`
   /// 
@@ -95,7 +98,7 @@ class Server {
 
   /// Starts the server and responds to requests based off the static file handler (if set) and the dynamic handlers.
   void start() {
-
+    
     HttpServer.bind(address, port).then((HttpServer server) {
       server.listen((HttpRequest request) {
         _handle(request);

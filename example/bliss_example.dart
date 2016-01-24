@@ -6,7 +6,7 @@ import 'package:bliss/bliss.dart';
 
 void main() {
   
-  Server server = new Server('localhost', 4040)
+  Server server = new Server()
     ..setStaticHandler('web')
     ..addHandler('get', '/api/:example', returnData)
     ..start(); // Run the server to start listening for requests
