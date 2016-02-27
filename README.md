@@ -38,9 +38,9 @@ A simple use case example:
     }
 
 ## Planned Features
-- SSL support
-- Define specific codec for request payloads
-- WebSocket handlers
+- [x] SSL support
+- [ ] Define specific codec for request payloads
+- [ ] WebSocket handlers
 
 ## Features and bugs
 

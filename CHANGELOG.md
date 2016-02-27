@@ -11,3 +11,7 @@
 ## 0.1.2
 
 - Fixed Issue #1, can now leave Server constructor's parameters empty.
+
+## 0.1.5
+
+- SSL support, setting the `securityContext` property will automatically `bindSecure()` on `start()`. 

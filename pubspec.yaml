@@ -1,6 +1,6 @@
 name: bliss
 description: An easy to learn server side framework for Dart.
-version: 0.1.2
+version: 0.1.5
 author: Steven Upton <steven.upton@indecks.co>
 homepage: https://github.com/stwupton/bliss
 

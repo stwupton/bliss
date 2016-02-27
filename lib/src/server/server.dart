@@ -16,10 +16,15 @@ class Server {
   _StaticHandler _staticHandler;
   List<_Handler> _handlers = [];
 
+  /// Assign a [SecurityContext] object from the 'dart:io' library. The [start()] method
+  /// will use [HttpServer.bindSecure] if [securityContext] has been assigned.
+  SecurityContext securityContext;
+
   bool get _hasStaticHandler => _staticHandler != null;
   bool get _hasHandlers => _handlers.isNotEmpty;
+  bool get _hasSecurityContext => securityContext != null;
 
-  Server([var address, this.port = 80]) {
+  Server([var address, this.port]) {
     this.address = address ?? InternetAddress.ANY_IP_V6;
   }
 
@@ -97,12 +102,20 @@ class Server {
   }
 
   /// Starts the server and responds to requests based off the static file handler (if set) and the dynamic handlers.
-  void start() {
-    
-    HttpServer.bind(address, port).then((HttpServer server) {
-      server.listen((HttpRequest request) {
-        _handle(request);
-      });
+  Future start() async {
+
+    this.port ??= this._hasSecurityContext ? 443 : 80;
+
+    HttpServer server;
+
+    if (this._hasSecurityContext)
+      server = await HttpServer
+          .bindSecure(this.address, this.port, this.securityContext);
+    else
+      server = await HttpServer.bind(this.address, this.port);
+
+    server.listen((HttpRequest request) {
+      _handle(request);
     });
 
   }
