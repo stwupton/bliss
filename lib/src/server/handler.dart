@@ -10,6 +10,7 @@ class _Handler {
   Function task;
   Map dataBuilder = {};
   RegExp pathRE;
+  List staticSegments = [];
 
   bool get handlesRequest => task is _TaskWithRequest;
 
@@ -116,7 +117,10 @@ class _Handler {
 
     List<String> splitPath = path.split('/')..removeAt(0);
 
+    int totalSegments = 0;
     for (String segment in splitPath) {
+
+      totalSegments++;
 
       if (singlePartRE.hasMatch(segment)) {
 
@@ -132,7 +136,12 @@ class _Handler {
         for (int i = 0; i < int.parse(m.group(2)); i++)
           REBuilder.write(r'(\w+)\/');
 
-      } else REBuilder.write('$segment' + r'\/');
+      } else {
+
+        REBuilder.write('$segment' + r'\/');
+        this.staticSegments.add(totalSegments);
+
+      }
 
     }
 

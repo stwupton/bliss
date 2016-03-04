@@ -59,10 +59,35 @@ class Server {
   void _handle(HttpRequest request) {
 
     if (_hasHandlers) {
-      for (_Handler handler in _handlers) {
-        if (handler.isMatch(request.method, request.uri.path)) 
-          return handler.execute(request);
+      
+      List<_Handler> matches = 
+        _handlers.where((h) => h.isMatch(request.method, request.uri.path));
+
+      if (matches.length == 1) {
+
+        return matches.first.execute(request);
+
+      } else if (matches.length > 1) {
+
+        // Reduce iterable down to most accurate path specification
+        _Handler match = matches.reduce((h1, h2) {
+
+          if (h1.staticSegments.length > h2.staticSegments.length) {
+            return h1;
+          } else if (h1.staticSegments.length < h2.staticSegments.length) {
+            return h2;
+          } else {
+            for (int i = 0; i < h1.staticSegments.length; i++)
+              if (h1.staticSegments[i] < h2.staticSegments[i]) return h1;
+              else if (h1.staticSegments[i] > h2.staticSegments[i]) return h2;
+          }
+
+        });
+
+        return match.execute(request);
+
       }
+
     }
 
     if (_hasStaticHandler) {
