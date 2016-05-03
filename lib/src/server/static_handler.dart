@@ -27,6 +27,9 @@ class _StaticHandler {
 
   }
 
+  ContentType _getMimeType(String path, List<int> bytes) =>
+    ContentType.parse(lookupMimeType(path, headerBytes: bytes));
+
   // Check that static resource exists
   bool hasResource(String path) {
 
@@ -73,35 +76,50 @@ class _StaticHandler {
     if (FileSystemEntity.isFileSync(path)) {
 
       File file = new File(path);
-      List<String> mimeType = lookupMimeType(path).split('/');
 
-      switch (mimeType[0]) {
+      request.response.headers.set(HttpHeaders.ACCEPT_RANGES, 'bytes');
+      request.response.headers.set(HttpHeaders.CONTENT_LENGTH, file.lengthSync());
 
-        case 'text':
-        case 'application':
+      List<int> buffer = [];
 
-          String content = file.readAsStringSync();
-          request.response
-              ..headers.contentType = new ContentType(mimeType[0], mimeType[1])
-              ..write(content)
-              ..close();
-          break;
+      // Read file and set content type
+      file.openRead().listen((data) {
 
-        case 'image':
+        if (buffer.length >= defaultMagicNumbersMaxLength) {
 
-          List<int> content = file.readAsBytesSync();
-          request.response
-              ..headers.contentType = new ContentType(mimeType[0], mimeType[1])
-              ..add(content)
-              ..close();
-          break;
+          ContentType contentType = _getMimeType(file.path, data);
+          if (contentType != null)
+            request.response.headers.contentType = contentType;
 
-        default:
-          return errorRespond(request.response, HttpStatus.BAD_REQUEST);
+          buffer = null;
 
-      }
+        } else if (buffer == null) {
 
-    } else return errorRespond(request.response, HttpStatus.NOT_FOUND);
+          request.response.add(data);
+
+        } else {
+
+          buffer.addAll(data);
+
+        }
+
+      }, onDone: () {
+
+        if (buffer != null && buffer.length != 0) {
+
+          ContentType contentType = _getMimeType(file.path, buffer);
+          if (contentType != null)
+            request.response.headers.contentType = contentType;
+
+          request.response.add(buffer);
+
+        }
+
+        request.response.close();
+
+      });
+
+    }
 
   }
 
