@@ -27,8 +27,12 @@ class _StaticHandler {
 
   }
 
-  ContentType _getMimeType(String path, List<int> bytes) =>
-    ContentType.parse(lookupMimeType(path, headerBytes: bytes));
+  ContentType resolveContentType(String path, List<int> bytes) {
+
+    String mimeType = lookupMimeType(path, headerBytes: bytes);
+    return mimeType != null ? ContentType.parse(mimeType) : null;
+
+  }
 
   // Check that static resource exists
   bool hasResource(String path) {
@@ -85,17 +89,20 @@ class _StaticHandler {
       // Read file and set content type
       file.openRead().listen((data) {
 
-        if (buffer.length >= defaultMagicNumbersMaxLength) {
+        if (buffer == null) {
 
-          ContentType contentType = _getMimeType(file.path, data);
+          request.response.add(data);
+
+        } else if (buffer.length >= defaultMagicNumbersMaxLength) {
+
+          buffer.addAll(data);
+
+          ContentType contentType = resolveContentType(file.path, data);
           if (contentType != null)
             request.response.headers.contentType = contentType;
 
+          request.response.add(buffer);
           buffer = null;
-
-        } else if (buffer == null) {
-
-          request.response.add(data);
 
         } else {
 
@@ -107,7 +114,7 @@ class _StaticHandler {
 
         if (buffer != null && buffer.length != 0) {
 
-          ContentType contentType = _getMimeType(file.path, buffer);
+          ContentType contentType = resolveContentType(file.path, buffer);
           if (contentType != null)
             request.response.headers.contentType = contentType;
 
