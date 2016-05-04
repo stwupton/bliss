@@ -97,7 +97,7 @@ class _StaticHandler {
 
           buffer.addAll(data);
 
-          ContentType contentType = resolveContentType(file.path, data);
+          ContentType contentType = resolveContentType(file.path, buffer);
           if (contentType != null)
             request.response.headers.contentType = contentType;
 
