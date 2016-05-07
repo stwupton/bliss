@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:mime/mime.dart';
+import 'package:path/path.dart';
 
 part 'handler.dart';
 part 'static_handler.dart';

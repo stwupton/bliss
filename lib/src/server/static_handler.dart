@@ -7,18 +7,20 @@ class _StaticHandler {
 
   factory _StaticHandler(String webRoot, List defaults) {
 
+    webRoot = normalize(webRoot);
+
     if (isValid(webRoot, defaults)) {
 
-      Directory _root = new Directory(webRoot);
-      return new _StaticHandler.internal(_root, defaults);
-      
+      Directory root = new Directory(webRoot);
+      return new _StaticHandler.internal(root, defaults);
+
     } else throw new Exception("Could not create static handler.");
 
   }
 
   _StaticHandler.internal(this.webRoot, this.defaults);
 
-  // Rspond to request with status code
+  // Respond to request with status code
   void errorRespond(HttpResponse response, int status) {
 
     response
@@ -38,7 +40,7 @@ class _StaticHandler {
   bool hasResource(String path) {
 
     FileSystemEntityType type = FileSystemEntity
-        .typeSync(webRoot.path + path);
+        .typeSync(normalize(webRoot.path + path));
 
     if (type == FileSystemEntityType.FILE || 
         type == FileSystemEntityType.DIRECTORY)
@@ -67,14 +69,36 @@ class _StaticHandler {
   // Serve request with static resource
   void serveResource(HttpRequest request) {
 
-    if (!hasResource(request.uri.path) || request.method != 'GET')
-      return errorRespond(request.response, HttpStatus.INTERNAL_SERVER_ERROR);
+    if (!hasResource(request.uri.path) || request.method != 'GET') {
+      errorRespond(request.response, HttpStatus.INTERNAL_SERVER_ERROR);
+      return;
+    }
 
-    String path = webRoot.path + request.uri.path;
+    String path = normalize(webRoot.path + request.uri.path);
 
+    // Find the default file if path points to directory
     if (FileSystemEntity.isDirectorySync(path)) {
-      path += defaults.firstWhere((String file) => 
-          FileSystemEntity.isFileSync(path + file), orElse: () => '');
+
+      // Permanently redirect the browser so the directory path ends with '/'
+      if (!request.uri.path.endsWith('/')) {
+
+        Uri redirectUri = request.uri.replace(path: request.uri.path + '/');
+
+        request.response.redirect(
+            redirectUri, 
+            status: HttpStatus.MOVED_PERMANENTLY);
+
+        return;
+        
+      }
+
+      String file = defaults.firstWhere((String f) => 
+        FileSystemEntity.isFileSync(
+            normalize(webRoot.path + join(request.uri.path, f))), 
+            orElse: () => '');
+
+      path = normalize(webRoot.path + join(request.uri.path, file));
+
     }
 
     if (FileSystemEntity.isFileSync(path)) {
@@ -125,6 +149,10 @@ class _StaticHandler {
         request.response.close();
 
       });
+
+    } else {
+
+      errorRespond(request.response, HttpStatus.NOT_FOUND);
 
     }
 

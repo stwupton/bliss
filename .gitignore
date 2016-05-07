@@ -22,5 +22,5 @@ doc/api/
 *.iws
 
 # Sublime Text
-bliss.sublime-workspace
-bliss.sublime-project
+*.sublime-workspace
+*.sublime-project
