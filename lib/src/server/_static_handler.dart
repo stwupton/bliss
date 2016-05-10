@@ -1,24 +1,53 @@
 part of bliss.server;
 
+typedef Duration CacheController(String fileName);
+
+Map<String, Duration> _cacheDurations = {
+  r'^.*\.html$': new Duration(days: 5),
+  r'^.*\.css$': new Duration(days: 14),
+  r'^.*\.js$': new Duration(days: 5),
+  r'^.*$': new Duration(days: 14)
+};
+
+/// A default cache controller to use for static handler.
+Duration defaultCacheController(String fileName) {
+
+  for (String key in _cacheDurations.keys) {
+
+    RegExp re = new RegExp(key);
+    if (re.firstMatch(fileName)?.group(0) == fileName)
+      return _cacheDurations[key];
+
+  }
+
+  return new Duration(seconds: 0);
+
+}
+
 class _StaticHandler {
 
   Directory webRoot;
   List defaults;
+  CacheController cacheController;
 
-  factory _StaticHandler(String webRoot, List defaults) {
+  bool get hasCacheController => cacheController != null;
+
+  factory _StaticHandler(String webRoot, 
+      List defaults, 
+      [CacheController cacheController]) {
 
     webRoot = normalize(webRoot);
 
     if (isValid(webRoot, defaults)) {
 
       Directory root = new Directory(webRoot);
-      return new _StaticHandler.internal(root, defaults);
+      return new _StaticHandler.internal(root, defaults, cacheController);
 
     } else throw new Exception("Could not create static handler.");
 
   }
 
-  _StaticHandler.internal(this.webRoot, this.defaults);
+  _StaticHandler.internal(this.webRoot, this.defaults, [this.cacheController]);
 
   // Respond to request with status code
   void errorRespond(HttpResponse response, int status) {
@@ -105,17 +134,44 @@ class _StaticHandler {
 
       File file = new File(path);
 
-      request.response.headers.set(HttpHeaders.ACCEPT_RANGES, 'bytes');
-      request.response.headers.set(HttpHeaders.CONTENT_LENGTH, file.lengthSync());
+      // Get cache control settings for file
+      String cacheControlHeader = 'no-cache';
+      if (this.hasCacheController) {
+
+        Duration duration = cacheController(basename(file.path));
+
+        if (duration.inSeconds > 0)
+          cacheControlHeader = 'public, max-age=${duration.inSeconds}';
+
+      }
+
+      request.response.headers
+        ..set(HttpHeaders.CACHE_CONTROL, cacheControlHeader)
+        ..set(HttpHeaders.DATE, new DateTime.now());
+
+      // Check if resource has been modified since last request
+      if (request.headers.ifModifiedSince != null && 
+          !file.lastModifiedSync().isAfter(request.headers.ifModifiedSince)) {
+
+        errorRespond(request.response, HttpStatus.NOT_MODIFIED);
+        return;
+
+      }
+
+      request.response.headers
+        ..set(HttpHeaders.LAST_MODIFIED, file.lastModifiedSync())
+        ..set(HttpHeaders.ACCEPT_RANGES, 'bytes')
+        ..set(HttpHeaders.CONTENT_LENGTH, file.lengthSync());
 
       List<int> buffer = [];
+      List<int> response = [];
 
       // Read file and set content type
       file.openRead().listen((data) {
 
         if (buffer == null) {
 
-          request.response.add(data);
+          response.addAll(data);
 
         } else if (buffer.length >= defaultMagicNumbersMaxLength) {
 
@@ -125,7 +181,7 @@ class _StaticHandler {
           if (contentType != null)
             request.response.headers.contentType = contentType;
 
-          request.response.add(buffer);
+          response.addAll(buffer);
           buffer = null;
 
         } else {
@@ -142,11 +198,26 @@ class _StaticHandler {
           if (contentType != null)
             request.response.headers.contentType = contentType;
 
-          request.response.add(buffer);
+          response.addAll(buffer);
 
         }
 
-        request.response.close();
+        // Compress if headers accept gzip encoding
+        List acceptEncoding = request.headers
+          .value(HttpHeaders.ACCEPT_ENCODING)
+          .replaceAll(new RegExp(r'\s.'), '')
+          .split(',');
+
+        if (acceptEncoding.contains('gzip')) {
+          response = GZIP.encode(response);
+          request.response.headers
+            ..set(HttpHeaders.CONTENT_ENCODING, 'gzip')
+            ..set(HttpHeaders.CONTENT_LENGTH, response.length);
+        }
+
+        request.response
+          ..add(response)
+          ..close();
 
       });
 

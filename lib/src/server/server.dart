@@ -7,8 +7,8 @@ import 'dart:io';
 import 'package:mime/mime.dart';
 import 'package:path/path.dart';
 
-part 'handler.dart';
-part 'static_handler.dart';
+part '_handler.dart';
+part '_static_handler.dart';
 
 class Server {
 
@@ -121,9 +121,11 @@ class Server {
   /// Define the path to the [webDirectory] that contains all static resources. 
   /// [defaults] are the paths of the default files that you want to respond with if the requested path is a directory.
   void setStaticHandler(String webDirectory, 
-      {List<String> defaults: const ['index.html']}) {
+      {List<String> defaults: const ['index.html'],
+      CacheController cacheController}) {
 
-    _staticHandler = new _StaticHandler(webDirectory, defaults);
+    _staticHandler = 
+      new _StaticHandler(webDirectory, defaults, cacheController);
 
   }
 
@@ -141,7 +143,14 @@ class Server {
       server = await HttpServer.bind(this.address, this.port);
 
     server.listen((HttpRequest request) {
+
+      // Set server header for response
+      request.response.headers.set(
+          HttpHeaders.SERVER, 
+          'Bliss (Dart v${Platform.version.split(' ')[0]})');
+
       _handle(request);
+
     });
 
   }
