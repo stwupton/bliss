@@ -9,6 +9,7 @@ import 'package:path/path.dart';
 
 part '_handler.dart';
 part '_static_handler.dart';
+part 'utils.dart';
 
 class Server {
 
@@ -120,6 +121,13 @@ class Server {
   /// 
   /// Define the path to the [webDirectory] that contains all static resources. 
   /// [defaults] are the paths of the default files that you want to respond with if the requested path is a directory.
+  /// 
+  /// The [cacheController] parameter is a callback used to decide on how long to cache
+  /// a resource in seconds with the 'Cache-Control' HTTP header. If the returned 
+  /// [Duration] object is of 0 seconds, then the headers value will be 'no-cache'. 
+  /// If it is more than 0 seconds however then the headers value will be 
+  /// 'public, max-age=<seconds>'. The [defaultCacheController] function is provided for basic 
+  /// cache control functionality.
   void setStaticHandler(String webDirectory, 
       {List<String> defaults: const ['index.html'],
       CacheController cacheController}) {

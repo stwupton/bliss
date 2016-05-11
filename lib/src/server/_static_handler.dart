@@ -1,29 +1,5 @@
 part of bliss.server;
 
-typedef Duration CacheController(String fileName);
-
-Map<String, Duration> _cacheDurations = {
-  r'^.*\.html$': new Duration(days: 5),
-  r'^.*\.css$': new Duration(days: 14),
-  r'^.*\.js$': new Duration(days: 5),
-  r'^.*$': new Duration(days: 14)
-};
-
-/// A default cache controller to use for static handler.
-Duration defaultCacheController(String fileName) {
-
-  for (String key in _cacheDurations.keys) {
-
-    RegExp re = new RegExp(key);
-    if (re.firstMatch(fileName)?.group(0) == fileName)
-      return _cacheDurations[key];
-
-  }
-
-  return new Duration(seconds: 0);
-
-}
-
 class _StaticHandler {
 
   Directory webRoot;
@@ -138,7 +114,8 @@ class _StaticHandler {
       String cacheControlHeader = 'no-cache';
       if (this.hasCacheController) {
 
-        Duration duration = cacheController(basename(file.path));
+        Duration duration = 
+          cacheController(relative(file.path, from: webRoot.path));
 
         if (duration.inSeconds > 0)
           cacheControlHeader = 'public, max-age=${duration.inSeconds}';
