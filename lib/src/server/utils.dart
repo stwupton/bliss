@@ -22,6 +22,6 @@ Duration defaultCacheController(String filePath) {
 
   }
 
-  return new Duration(seconds: 0);
+  return null;
 
 }

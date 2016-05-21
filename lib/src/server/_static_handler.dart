@@ -117,7 +117,7 @@ class _StaticHandler {
         Duration duration = 
           cacheController(relative(file.path, from: webRoot.path));
 
-        if (duration.inSeconds > 0)
+        if (duration != null && duration.inSeconds > 0)
           cacheControlHeader = 'public, max-age=${duration.inSeconds}';
 
       }
