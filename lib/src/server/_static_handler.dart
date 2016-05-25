@@ -2,35 +2,134 @@ part of bliss.server;
 
 class _StaticHandler {
 
-  Directory webRoot;
-  List defaults;
   CacheController cacheController;
+  List defaults;
+  Map<int, String> errorResponses;
+  String spaDefault;
+  Directory webDirectory;
 
   bool get hasCacheController => cacheController != null;
+  bool get hasSpaDefault => spaDefault != null;
+  bool get hasErrorResponses => errorResponses != null;
 
-  factory _StaticHandler(String webRoot, 
+  factory _StaticHandler(
+      String webDirectory, 
       List defaults, 
-      [CacheController cacheController]) {
+      [CacheController cacheController,
+      Map<int, String> errorResponses,
+      String spaDefault]) {
 
-    webRoot = normalize(webRoot);
+    webDirectory = normalize(webDirectory);
 
-    if (isValid(webRoot, defaults)) {
+    if (isValid(webDirectory, defaults)) {
 
-      Directory root = new Directory(webRoot);
-      return new _StaticHandler.internal(root, defaults, cacheController);
+      return new _StaticHandler.internal(
+          new Directory(webDirectory), 
+          defaults, 
+          cacheController,
+          errorResponses,
+          spaDefault);
 
     } else throw new Exception("Could not create static handler.");
 
   }
 
-  _StaticHandler.internal(this.webRoot, this.defaults, [this.cacheController]);
+  _StaticHandler.internal(
+      this.webDirectory, 
+      this.defaults, 
+      [this.cacheController,
+      this.errorResponses,
+      this.spaDefault]);
+
+  Future addToResponse(HttpRequest request, File file) async {
+
+    List<int> buffer = [];
+    List<int> response = [];
+
+    // Read file and set content type
+    await for (List<int> data in file.openRead()) {
+
+      if (buffer == null) {
+
+        response.addAll(data);
+
+      } else if (buffer.length >= defaultMagicNumbersMaxLength) {
+
+        buffer.addAll(data);
+
+        ContentType contentType = resolveContentType(file.path, buffer);
+        if (contentType != null)
+          request.response.headers.contentType = contentType;
+
+        response.addAll(buffer);
+        buffer = null;
+
+      } else {
+
+        buffer.addAll(data);
+
+      }
+
+    }
+
+    if (buffer != null && buffer.length != 0) {
+
+      ContentType contentType = resolveContentType(file.path, buffer);
+      if (contentType != null)
+        request.response.headers.contentType = contentType;
+
+      response.addAll(buffer);
+
+    }
+
+    // Compress if headers accept gzip encoding
+    List acceptEncoding = request.headers
+      .value(HttpHeaders.ACCEPT_ENCODING)
+      .replaceAll(new RegExp(r'\s.'), '')
+      .split(',');
+
+    if (acceptEncoding.contains('gzip')) {
+      response = GZIP.encode(response);
+      request.response.headers
+        ..set(HttpHeaders.CONTENT_ENCODING, 'gzip')
+        ..set(HttpHeaders.CONTENT_LENGTH, response.length);
+    }
+
+    request.response.add(response);
+
+  }
 
   // Respond to request with status code
-  void errorRespond(HttpResponse response, int status) {
+  void errorRespond(HttpRequest request, int status) {
 
-    response
-      ..statusCode = status
-      ..close();
+    // Check if status is 404 and a spaDefault is present
+    if (hasSpaDefault && status == HttpStatus.NOT_FOUND) {
+
+      String spaPath = normalize(webDirectory.path + separator + spaDefault);
+      if (FileSystemEntity.isFileSync(spaPath)) {
+
+        return addToResponse(request, new File(spaPath))
+          .then((_) => request.response.close());
+
+      }
+
+    }
+
+    request.response.statusCode = status;
+    if (hasErrorResponses && errorResponses.containsKey(status)) {
+
+      String errorPath = 
+        normalize(webDirectory.path + separator + errorResponses[status]);
+      if (FileSystemEntity.isFileSync(errorPath)) {
+
+        return addToResponse(request, new File(errorPath))
+          .then((_) => request.response.close());
+
+      }
+
+    }
+
+    request.response.close();
 
   }
 
@@ -45,7 +144,7 @@ class _StaticHandler {
   bool hasResource(String path) {
 
     FileSystemEntityType type = FileSystemEntity
-        .typeSync(normalize(webRoot.path + path));
+        .typeSync(normalize(webDirectory.path + path));
 
     if (type == FileSystemEntityType.FILE || 
         type == FileSystemEntityType.DIRECTORY)
@@ -74,12 +173,12 @@ class _StaticHandler {
   // Serve request with static resource
   void serveResource(HttpRequest request) {
 
-    if (!hasResource(request.uri.path) || request.method != 'GET') {
-      errorRespond(request.response, HttpStatus.INTERNAL_SERVER_ERROR);
+    if (!hasResource(request.uri.path)) {
+      errorRespond(request, HttpStatus.NOT_FOUND);
       return;
     }
 
-    String path = normalize(webRoot.path + request.uri.path);
+    String path = normalize(webDirectory.path + request.uri.path);
 
     // Find the default file if path points to directory
     if (FileSystemEntity.isDirectorySync(path)) {
@@ -99,10 +198,10 @@ class _StaticHandler {
 
       String file = defaults.firstWhere((String f) => 
         FileSystemEntity.isFileSync(
-            normalize(webRoot.path + join(request.uri.path, f))), 
+            normalize(webDirectory.path + join(request.uri.path, f))), 
             orElse: () => '');
 
-      path = normalize(webRoot.path + join(request.uri.path, file));
+      path = normalize(webDirectory.path + join(request.uri.path, file));
 
     }
 
@@ -115,7 +214,7 @@ class _StaticHandler {
       if (this.hasCacheController) {
 
         Duration duration = 
-          cacheController(relative(file.path, from: webRoot.path));
+          cacheController(relative(file.path, from: webDirectory.path));
 
         if (duration != null && duration.inSeconds > 0)
           cacheControlHeader = 'public, max-age=${duration.inSeconds}';
@@ -130,7 +229,9 @@ class _StaticHandler {
       if (request.headers.ifModifiedSince != null && 
           !file.lastModifiedSync().isAfter(request.headers.ifModifiedSince)) {
 
-        errorRespond(request.response, HttpStatus.NOT_MODIFIED);
+        request.response
+          ..statusCode = HttpStatus.NOT_MODIFIED
+          ..close();
         return;
 
       }
@@ -140,67 +241,12 @@ class _StaticHandler {
         ..set(HttpHeaders.ACCEPT_RANGES, 'bytes')
         ..set(HttpHeaders.CONTENT_LENGTH, file.lengthSync());
 
-      List<int> buffer = [];
-      List<int> response = [];
-
-      // Read file and set content type
-      file.openRead().listen((data) {
-
-        if (buffer == null) {
-
-          response.addAll(data);
-
-        } else if (buffer.length >= defaultMagicNumbersMaxLength) {
-
-          buffer.addAll(data);
-
-          ContentType contentType = resolveContentType(file.path, buffer);
-          if (contentType != null)
-            request.response.headers.contentType = contentType;
-
-          response.addAll(buffer);
-          buffer = null;
-
-        } else {
-
-          buffer.addAll(data);
-
-        }
-
-      }, onDone: () {
-
-        if (buffer != null && buffer.length != 0) {
-
-          ContentType contentType = resolveContentType(file.path, buffer);
-          if (contentType != null)
-            request.response.headers.contentType = contentType;
-
-          response.addAll(buffer);
-
-        }
-
-        // Compress if headers accept gzip encoding
-        List acceptEncoding = request.headers
-          .value(HttpHeaders.ACCEPT_ENCODING)
-          .replaceAll(new RegExp(r'\s.'), '')
-          .split(',');
-
-        if (acceptEncoding.contains('gzip')) {
-          response = GZIP.encode(response);
-          request.response.headers
-            ..set(HttpHeaders.CONTENT_ENCODING, 'gzip')
-            ..set(HttpHeaders.CONTENT_LENGTH, response.length);
-        }
-
-        request.response
-          ..add(response)
-          ..close();
-
-      });
+      addToResponse(request, file)
+        .then((_) => request.response.close());
 
     } else {
 
-      errorRespond(request.response, HttpStatus.NOT_FOUND);
+      errorRespond(request, HttpStatus.NOT_FOUND);
 
     }
 
