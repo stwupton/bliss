@@ -128,6 +128,22 @@ class Server {
   /// If it is more than 0 seconds however then the headers value will be 
   /// 'public, max-age=<seconds>'. The [defaultCacheController] function is provided for basic 
   /// cache control functionality.
+  /// 
+  /// [errorResponses] is a Map used to serve static files when the server responds 
+  /// with an error code. Currently, the only error code that can be sent from the 
+  /// server is 404. The file paths passed as values will be searched for relative 
+  /// from the [webDirectory].
+  /// 
+  /// Example:
+  /// 
+  ///     new Server()
+  ///       ..setStaticHandler('../build/web/', errorResponses: {404: 'not_found.html'})
+  ///       ..start();
+  /// 
+  /// The [spaDefault] is the path to the file used for single page applications. 
+  /// The server will respond with the [spaDefault] file if the server cannot find 
+  /// a resource matching the URL's path. Therefore, if the [spaDefault] is present, 
+  /// it replaces the 404 error response if defined in the [errorResponses] Map.
   void setStaticHandler(
       String webDirectory, 
       {List<String> defaults: const ['index.html'],
@@ -161,7 +177,7 @@ class Server {
 
       // Set server header for response
       request.response.headers
-        ..set(HttpHeaders.SERVER, 'Dart/${Platform.version.split(' ')[0]} Bliss/0.2')
+        ..set(HttpHeaders.SERVER, 'Dart/${Platform.version.split(' ')[0]} Bliss/0.2.0')
         ..set(HttpHeaders.DATE, new DateTime.now());
 
       _handle(request);
