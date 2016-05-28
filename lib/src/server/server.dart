@@ -66,9 +66,7 @@ class Server {
         _handlers.where((h) => h.isMatch(request.method, request.uri.path));
 
       if (matches.length == 1) {
-
         return matches.first.execute(request);
-
       } else if (matches.length > 1) {
 
         // Reduce iterable down to most accurate path specification
@@ -79,9 +77,14 @@ class Server {
           } else if (h1.staticSegments.length < h2.staticSegments.length) {
             return h2;
           } else {
-            for (int i = 0; i < h1.staticSegments.length; i++)
-              if (h1.staticSegments[i] < h2.staticSegments[i]) return h1;
-              else if (h1.staticSegments[i] > h2.staticSegments[i]) return h2;
+            for (int i = 0; i < h1.staticSegments.length; i++) {
+
+              if (h1.staticSegments[i] < h2.staticSegments[i]) 
+                return h1;
+              else if (h1.staticSegments[i] > h2.staticSegments[i]) 
+                return h2;
+
+            }
           }
 
         });
@@ -92,11 +95,8 @@ class Server {
 
     }
 
-    if (_hasStaticHandler) {
-      if (_staticHandler.hasResource(request.uri.path) && 
-          request.method == 'GET') 
-        return _staticHandler.serveResource(request);
-    }
+    if (_hasStaticHandler && request.method == 'GET')
+      return _staticHandler.serveResource(request);
 
     request.response
       ..statusCode = HttpStatus.NOT_FOUND
@@ -128,12 +128,35 @@ class Server {
   /// If it is more than 0 seconds however then the headers value will be 
   /// 'public, max-age=<seconds>'. The [defaultCacheController] function is provided for basic 
   /// cache control functionality.
-  void setStaticHandler(String webDirectory, 
+  /// 
+  /// [errorResponses] is a Map used to serve static files when the server responds 
+  /// with an error code. Currently, the only error code that can be sent from the 
+  /// server is 404. The file paths passed as values will be searched for relative 
+  /// from the [webDirectory].
+  /// 
+  /// Example:
+  /// 
+  ///     new Server()
+  ///       ..setStaticHandler('../build/web/', errorResponses: {404: 'not_found.html'})
+  ///       ..start();
+  /// 
+  /// The [spaDefault] is the path to the file used for single page applications. 
+  /// The server will respond with the [spaDefault] file if the server cannot find 
+  /// a resource matching the URL's path. Therefore, if the [spaDefault] is present, 
+  /// it replaces the 404 error response if defined in the [errorResponses] Map.
+  void setStaticHandler(
+      String webDirectory, 
       {List<String> defaults: const ['index.html'],
-      CacheController cacheController}) {
+      CacheController cacheController,
+      Map<int, String> errorResponses,
+      String spaDefault}) {
 
-    _staticHandler = 
-      new _StaticHandler(webDirectory, defaults, cacheController);
+    _staticHandler = new _StaticHandler(
+        webDirectory, 
+        defaults, 
+        cacheController, 
+        errorResponses, 
+        spaDefault);
 
   }
 
@@ -153,9 +176,9 @@ class Server {
     server.listen((HttpRequest request) {
 
       // Set server header for response
-      request.response.headers.set(
-          HttpHeaders.SERVER, 
-          'Bliss (Dart v${Platform.version.split(' ')[0]})');
+      request.response.headers
+        ..set(HttpHeaders.SERVER, 'Dart/${Platform.version.split(' ')[0]} Bliss/0.2.0')
+        ..set(HttpHeaders.DATE, new DateTime.now());
 
       _handle(request);
 
