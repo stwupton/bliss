@@ -160,9 +160,9 @@ class Server {
     server.listen((HttpRequest request) {
 
       // Set server header for response
-      request.response.headers.set(
-          HttpHeaders.SERVER, 
-          'Bliss (Dart v${Platform.version.split(' ')[0]})');
+      request.response.headers
+        ..set(HttpHeaders.SERVER, 'Dart/${Platform.version.split(' ')[0]} Bliss/0.2')
+        ..set(HttpHeaders.DATE, new DateTime.now());
 
       _handle(request);
 

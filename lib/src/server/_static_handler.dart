@@ -43,6 +43,11 @@ class _StaticHandler {
 
   Future addToResponse(HttpRequest request, File file) async {
 
+    request.response.headers
+      ..set(HttpHeaders.LAST_MODIFIED, file.lastModifiedSync())
+      ..set(HttpHeaders.ACCEPT_RANGES, 'bytes')
+      ..set(HttpHeaders.CONTENT_LENGTH, file.lengthSync());
+
     List<int> buffer = [];
     List<int> response = [];
 
@@ -108,9 +113,9 @@ class _StaticHandler {
       String spaPath = normalize(webDirectory.path + separator + spaDefault);
       if (FileSystemEntity.isFileSync(spaPath)) {
 
-        return addToResponse(request, new File(spaPath))
-          .then((_) => request.response.close());
-
+        serveFile(request, spaPath);
+        return;
+        
       }
 
     }
@@ -122,8 +127,9 @@ class _StaticHandler {
         normalize(webDirectory.path + separator + errorResponses[status]);
       if (FileSystemEntity.isFileSync(errorPath)) {
 
-        return addToResponse(request, new File(errorPath))
+        addToResponse(request, new File(errorPath))
           .then((_) => request.response.close());
+        return;
 
       }
 
@@ -133,10 +139,20 @@ class _StaticHandler {
 
   }
 
-  ContentType resolveContentType(String path, List<int> bytes) {
+  String getCacheValue(File file) {
 
-    String mimeType = lookupMimeType(path, headerBytes: bytes);
-    return mimeType != null ? ContentType.parse(mimeType) : null;
+      String cache = 'no-cache';
+      if (this.hasCacheController) {
+
+        Duration duration = 
+          cacheController(relative(file.path, from: webDirectory.path));
+
+        if (duration != null && duration.inSeconds > 0)
+          cache = 'public, max-age=${duration.inSeconds}';
+
+      }
+
+      return cache;
 
   }
 
@@ -167,6 +183,44 @@ class _StaticHandler {
     }
 
     return true;
+
+  }
+
+  ContentType resolveContentType(String path, List<int> bytes) {
+
+    String mimeType = lookupMimeType(path, headerBytes: bytes);
+    return mimeType != null ? ContentType.parse(mimeType) : null;
+
+  }
+
+  void serveFile(HttpRequest request, String path) {
+
+    if (FileSystemEntity.isFileSync(path)) {
+
+      File file = new File(path);
+
+      request.response.headers
+        .set(HttpHeaders.CACHE_CONTROL, getCacheValue(file));
+
+      // Check if resource has been modified since last request
+      if (request.headers.ifModifiedSince != null && 
+          !file.lastModifiedSync().isAfter(request.headers.ifModifiedSince)) {
+
+        request.response
+          ..statusCode = HttpStatus.NOT_MODIFIED
+          ..close();
+        return;
+
+      }
+
+      addToResponse(request, file)
+        .then((_) => request.response.close());
+
+    } else {
+
+      errorRespond(request, HttpStatus.NOT_FOUND);
+
+    }
 
   }
 
@@ -205,50 +259,7 @@ class _StaticHandler {
 
     }
 
-    if (FileSystemEntity.isFileSync(path)) {
-
-      File file = new File(path);
-
-      // Get cache control settings for file
-      String cacheControlHeader = 'no-cache';
-      if (this.hasCacheController) {
-
-        Duration duration = 
-          cacheController(relative(file.path, from: webDirectory.path));
-
-        if (duration != null && duration.inSeconds > 0)
-          cacheControlHeader = 'public, max-age=${duration.inSeconds}';
-
-      }
-
-      request.response.headers
-        ..set(HttpHeaders.CACHE_CONTROL, cacheControlHeader)
-        ..set(HttpHeaders.DATE, new DateTime.now());
-
-      // Check if resource has been modified since last request
-      if (request.headers.ifModifiedSince != null && 
-          !file.lastModifiedSync().isAfter(request.headers.ifModifiedSince)) {
-
-        request.response
-          ..statusCode = HttpStatus.NOT_MODIFIED
-          ..close();
-        return;
-
-      }
-
-      request.response.headers
-        ..set(HttpHeaders.LAST_MODIFIED, file.lastModifiedSync())
-        ..set(HttpHeaders.ACCEPT_RANGES, 'bytes')
-        ..set(HttpHeaders.CONTENT_LENGTH, file.lengthSync());
-
-      addToResponse(request, file)
-        .then((_) => request.response.close());
-
-    } else {
-
-      errorRespond(request, HttpStatus.NOT_FOUND);
-
-    }
+    serveFile(request, path);
 
   }
 
