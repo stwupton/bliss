@@ -5,9 +5,11 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:mime/mime.dart';
+import 'package:path/path.dart';
 
-part 'handler.dart';
-part 'static_handler.dart';
+part '_handler.dart';
+part '_static_handler.dart';
+part 'utils.dart';
 
 class Server {
 
@@ -64,9 +66,7 @@ class Server {
         _handlers.where((h) => h.isMatch(request.method, request.uri.path));
 
       if (matches.length == 1) {
-
         return matches.first.execute(request);
-
       } else if (matches.length > 1) {
 
         // Reduce iterable down to most accurate path specification
@@ -77,9 +77,14 @@ class Server {
           } else if (h1.staticSegments.length < h2.staticSegments.length) {
             return h2;
           } else {
-            for (int i = 0; i < h1.staticSegments.length; i++)
-              if (h1.staticSegments[i] < h2.staticSegments[i]) return h1;
-              else if (h1.staticSegments[i] > h2.staticSegments[i]) return h2;
+            for (int i = 0; i < h1.staticSegments.length; i++) {
+
+              if (h1.staticSegments[i] < h2.staticSegments[i]) 
+                return h1;
+              else if (h1.staticSegments[i] > h2.staticSegments[i]) 
+                return h2;
+
+            }
           }
 
         });
@@ -90,11 +95,8 @@ class Server {
 
     }
 
-    if (_hasStaticHandler) {
-      if (_staticHandler.hasResource(request.uri.path) && 
-          request.method == 'GET') 
-        return _staticHandler.serveResource(request);
-    }
+    if (_hasStaticHandler && request.method == 'GET')
+      return _staticHandler.serveResource(request);
 
     request.response
       ..statusCode = HttpStatus.NOT_FOUND
@@ -119,10 +121,42 @@ class Server {
   /// 
   /// Define the path to the [webDirectory] that contains all static resources. 
   /// [defaults] are the paths of the default files that you want to respond with if the requested path is a directory.
-  void setStaticHandler(String webDirectory, 
-      {List<String> defaults: const ['index.html']}) {
+  /// 
+  /// The [cacheController] parameter is a callback used to decide on how long to cache
+  /// a resource in seconds with the 'Cache-Control' HTTP header. If the returned 
+  /// [Duration] object is of 0 seconds, then the headers value will be 'no-cache'. 
+  /// If it is more than 0 seconds however then the headers value will be 
+  /// 'public, max-age=<seconds>'. The [defaultCacheController] function is provided for basic 
+  /// cache control functionality.
+  /// 
+  /// [errorResponses] is a Map used to serve static files when the server responds 
+  /// with an error code. Currently, the only error code that can be sent from the 
+  /// server is 404. The file paths passed as values will be searched for relative 
+  /// from the [webDirectory].
+  /// 
+  /// Example:
+  /// 
+  ///     new Server()
+  ///       ..setStaticHandler('../build/web/', errorResponses: {404: 'not_found.html'})
+  ///       ..start();
+  /// 
+  /// The [spaDefault] is the path to the file used for single page applications. 
+  /// The server will respond with the [spaDefault] file if the server cannot find 
+  /// a resource matching the URL's path. Therefore, if the [spaDefault] is present, 
+  /// it replaces the 404 error response if defined in the [errorResponses] Map.
+  void setStaticHandler(
+      String webDirectory, 
+      {List<String> defaults: const ['index.html'],
+      CacheController cacheController,
+      Map<int, String> errorResponses,
+      String spaDefault}) {
 
-    _staticHandler = new _StaticHandler(webDirectory, defaults);
+    _staticHandler = new _StaticHandler(
+        webDirectory, 
+        defaults, 
+        cacheController, 
+        errorResponses, 
+        spaDefault);
 
   }
 
@@ -140,7 +174,14 @@ class Server {
       server = await HttpServer.bind(this.address, this.port);
 
     server.listen((HttpRequest request) {
+
+      // Set server header for response
+      request.response.headers
+        ..set(HttpHeaders.SERVER, 'Dart/${Platform.version.split(' ')[0]} Bliss/0.2.0')
+        ..set(HttpHeaders.DATE, new DateTime.now());
+
       _handle(request);
+
     });
 
   }
