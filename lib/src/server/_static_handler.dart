@@ -13,8 +13,8 @@ class _StaticHandler {
   bool get hasErrorResponses => errorResponses != null;
 
   factory _StaticHandler(
-      String webDirectory, 
-      List defaults, 
+      String webDirectory,
+      List defaults,
       [CacheController cacheController,
       Map<int, String> errorResponses,
       String spaDefault]) {
@@ -24,8 +24,8 @@ class _StaticHandler {
     if (isValid(webDirectory, defaults)) {
 
       return new _StaticHandler.internal(
-          new Directory(webDirectory), 
-          defaults, 
+          new Directory(webDirectory),
+          defaults,
           cacheController,
           errorResponses,
           spaDefault);
@@ -35,8 +35,8 @@ class _StaticHandler {
   }
 
   _StaticHandler.internal(
-      this.webDirectory, 
-      this.defaults, 
+      this.webDirectory,
+      this.defaults,
       [this.cacheController,
       this.errorResponses,
       this.spaDefault]);
@@ -90,8 +90,8 @@ class _StaticHandler {
     // Compress if headers accept gzip encoding
     List acceptEncoding = request.headers
       .value(HttpHeaders.ACCEPT_ENCODING)
-      .replaceAll(new RegExp(r'\s.'), '')
-      .split(',');
+      ?.replaceAll(new RegExp(r'\s.'), '')
+      ?.split(',') ?? [];
 
     if (acceptEncoding.contains('gzip')) {
       response = GZIP.encode(response);
@@ -115,7 +115,7 @@ class _StaticHandler {
 
         serveFile(request, spaPath);
         return;
-        
+
       }
 
     }
@@ -123,7 +123,7 @@ class _StaticHandler {
     request.response.statusCode = status;
     if (hasErrorResponses && errorResponses.containsKey(status)) {
 
-      String errorPath = 
+      String errorPath =
         normalize(webDirectory.path + separator + errorResponses[status]);
       if (FileSystemEntity.isFileSync(errorPath)) {
 
@@ -144,7 +144,7 @@ class _StaticHandler {
       String cache = 'no-cache';
       if (this.hasCacheController) {
 
-        Duration duration = 
+        Duration duration =
           cacheController(relative(file.path, from: webDirectory.path));
 
         if (duration != null && duration.inSeconds > 0)
@@ -162,7 +162,7 @@ class _StaticHandler {
     FileSystemEntityType type = FileSystemEntity
         .typeSync(normalize(webDirectory.path + path));
 
-    if (type == FileSystemEntityType.FILE || 
+    if (type == FileSystemEntityType.FILE ||
         type == FileSystemEntityType.DIRECTORY)
       return true;
     else return false;
@@ -203,7 +203,7 @@ class _StaticHandler {
         .set(HttpHeaders.CACHE_CONTROL, getCacheValue(file));
 
       // Check if resource has been modified since last request
-      if (request.headers.ifModifiedSince != null && 
+      if (request.headers.ifModifiedSince != null &&
           !file.lastModifiedSync().isAfter(request.headers.ifModifiedSince)) {
 
         request.response
@@ -243,16 +243,16 @@ class _StaticHandler {
         Uri redirectUri = request.uri.replace(path: request.uri.path + '/');
 
         request.response.redirect(
-            redirectUri, 
+            redirectUri,
             status: HttpStatus.MOVED_PERMANENTLY);
 
         return;
-        
+
       }
 
-      String file = defaults.firstWhere((String f) => 
+      String file = defaults.firstWhere((String f) =>
         FileSystemEntity.isFileSync(
-            normalize(webDirectory.path + join(request.uri.path, f))), 
+            normalize(webDirectory.path + join(request.uri.path, f))),
             orElse: () => '');
 
       path = normalize(webDirectory.path + join(request.uri.path, file));
