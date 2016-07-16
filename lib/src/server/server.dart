@@ -31,24 +31,24 @@ class Server {
   }
 
   /// Add dynamic handler to run task and/or respond to requests.
-  /// 
+  ///
   /// The [path] can contain variable parts that can be handled with the [task]. These parts can be declared in one of two ways:
-  /// 
+  ///
   /// 1. `/:single` results in `{"single": ...}`
   /// 2. `/:multipleParts{2}` results in `{"multipleParts": [..., ...]}`
-  /// 
+  ///
   /// The [task] can take either two parameters or just one. The first required parameter is of type [Map] which gives the task access to the variables declared in the [path] and/or the payload of the request. The second optional parameter is the [HttpRequest] that the server received. If the payload of the request is not in JSON format, then it gets passed to the task as a [String] with a key depending on what the method is: `{"<method>_data": "..."}`.
-  /// 
+  ///
   /// **Note**: To avoid clashes, if any of the variable parts in the path are named the same as `<method>_data` it will throw an exception and will not be accepted.
-  /// 
+  ///
   /// Example:
-  /// 
+  ///
   ///     void main() {
-  ///       
+  ///
   ///       Server server = new Server()
   ///           ..addHandler('POST', '/example/:multi{3}', (_, HttpRequest request) => ...)
   ///           ..addHandler('GET', 'test/:single', (Map data, HttpRequest request) => ...);
-  /// 
+  ///
   ///     }
   void addHandler(String method, String path, Function task) {
 
@@ -61,8 +61,8 @@ class Server {
   void _handle(HttpRequest request) {
 
     if (_hasHandlers) {
-      
-      List<_Handler> matches = 
+
+      List<_Handler> matches =
         _handlers.where((h) => h.isMatch(request.method, request.uri.path));
 
       if (matches.length == 1) {
@@ -79,9 +79,9 @@ class Server {
           } else {
             for (int i = 0; i < h1.staticSegments.length; i++) {
 
-              if (h1.staticSegments[i] < h2.staticSegments[i]) 
+              if (h1.staticSegments[i] < h2.staticSegments[i])
                 return h1;
-              else if (h1.staticSegments[i] > h2.staticSegments[i]) 
+              else if (h1.staticSegments[i] > h2.staticSegments[i])
                 return h2;
 
             }
@@ -118,44 +118,44 @@ class Server {
   }
 
   /// Set static file handler.
-  /// 
-  /// Define the path to the [webDirectory] that contains all static resources. 
+  ///
+  /// Define the path to the [webDirectory] that contains all static resources.
   /// [defaults] are the paths of the default files that you want to respond with if the requested path is a directory.
-  /// 
+  ///
   /// The [cacheController] parameter is a callback used to decide on how long to cache
-  /// a resource in seconds with the 'Cache-Control' HTTP header. If the returned 
-  /// [Duration] object is of 0 seconds, then the headers value will be 'no-cache'. 
-  /// If it is more than 0 seconds however then the headers value will be 
-  /// 'public, max-age=<seconds>'. The [defaultCacheController] function is provided for basic 
+  /// a resource in seconds with the 'Cache-Control' HTTP header. If the returned
+  /// [Duration] object is of 0 seconds, then the headers value will be 'no-cache'.
+  /// If it is more than 0 seconds however then the headers value will be
+  /// 'public, max-age=<seconds>'. The [defaultCacheController] function is provided for basic
   /// cache control functionality.
-  /// 
-  /// [errorResponses] is a Map used to serve static files when the server responds 
-  /// with an error code. Currently, the only error code that can be sent from the 
-  /// server is 404. The file paths passed as values will be searched for relative 
+  ///
+  /// [errorResponses] is a Map used to serve static files when the server responds
+  /// with an error code. Currently, the only error code that can be sent from the
+  /// server is 404. The file paths passed as values will be searched for relative
   /// from the [webDirectory].
-  /// 
+  ///
   /// Example:
-  /// 
+  ///
   ///     new Server()
   ///       ..setStaticHandler('../build/web/', errorResponses: {404: 'not_found.html'})
   ///       ..start();
-  /// 
-  /// The [spaDefault] is the path to the file used for single page applications. 
-  /// The server will respond with the [spaDefault] file if the server cannot find 
-  /// a resource matching the URL's path. Therefore, if the [spaDefault] is present, 
+  ///
+  /// The [spaDefault] is the path to the file used for single page applications.
+  /// The server will respond with the [spaDefault] file if the server cannot find
+  /// a resource matching the URL's path. Therefore, if the [spaDefault] is present,
   /// it replaces the 404 error response if defined in the [errorResponses] Map.
   void setStaticHandler(
-      String webDirectory, 
+      String webDirectory,
       {List<String> defaults: const ['index.html'],
       CacheController cacheController,
       Map<int, String> errorResponses,
       String spaDefault}) {
 
     _staticHandler = new _StaticHandler(
-        webDirectory, 
-        defaults, 
-        cacheController, 
-        errorResponses, 
+        webDirectory,
+        defaults,
+        cacheController,
+        errorResponses,
         spaDefault);
 
   }
@@ -173,16 +173,17 @@ class Server {
     else
       server = await HttpServer.bind(this.address, this.port);
 
-    server.listen((HttpRequest request) {
+    server
+      ..serverHeader = 'Dart/${Platform.version.split(' ')[0]} Bliss/0.2.1'
+      ..listen((HttpRequest request) {
 
-      // Set server header for response
-      request.response.headers
-        ..set(HttpHeaders.SERVER, 'Dart/${Platform.version.split(' ')[0]} Bliss/0.2.0')
-        ..set(HttpHeaders.DATE, new DateTime.now());
+        // Set server header for response
+        request.response.headers
+          ..set(HttpHeaders.DATE, new DateTime.now());
 
-      _handle(request);
+        _handle(request);
 
-    });
+      });
 
   }
 
