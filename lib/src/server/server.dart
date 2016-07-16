@@ -174,7 +174,7 @@ class Server {
       server = await HttpServer.bind(this.address, this.port);
 
     server
-      ..serverHeader = 'Dart/${Platform.version.split(' ')[0]} Bliss/0.2.0'
+      ..serverHeader = 'Dart/${Platform.version.split(' ')[0]} Bliss/0.2.1'
       ..listen((HttpRequest request) {
 
         // Set server header for response

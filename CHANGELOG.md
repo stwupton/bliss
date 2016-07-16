@@ -14,4 +14,8 @@
 
 ## 0.1.5
 
-- SSL support, setting the `securityContext` property will automatically `bindSecure()` on `start()`. 
+- SSL support, setting the `securityContext` property will automatically `bindSecure()` on `start()`.
+
+## 0.2.1
+
+- Fixed server crash when accept-encoding header is not present on incoming `HttpRequest`.
