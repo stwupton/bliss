@@ -21,9 +21,9 @@ class _Handler {
     path = path.trim();
     if (!path.startsWith('/')) path = '/$path';
 
-    if (isValid(method, path, task)) 
+    if (isValid(method, path, task))
       return new _Handler.internal(method, path, task);
-    else 
+    else
       throw new Exception("Failed to create handler with method: $method, path: $path.");
 
   }
@@ -71,7 +71,7 @@ class _Handler {
       else if (dataBuilder[key] > 1) {
 
         List l = [];
-        for (int i = 0; i < dataBuilder[key]; i++) 
+        for (int i = 0; i < dataBuilder[key]; i++)
           l.add(m.group(varPartCount++));
 
         data[key] = l;
@@ -110,8 +110,8 @@ class _Handler {
   // Set helpers to be queried when comparing to request and to build data from path and payload
   void init() {
 
-    RegExp singlePartRE = new RegExp(r'^\:(\w+)\/?$');
-    RegExp multiPartRE = new RegExp(r'^\:(\w+)\{(\d{1,2})\}\/?$');
+    RegExp singlePartRE = new RegExp(r'^\:([\w\-]+)\/?$');
+    RegExp multiPartRE = new RegExp(r'^\:([\w\-]+)\{(\d{1,2})\}\/?$');
 
     StringBuffer REBuilder = new StringBuffer()..write(r'^\/');
 
@@ -126,7 +126,7 @@ class _Handler {
 
         Match m = singlePartRE.firstMatch(segment);
         dataBuilder[m.group(1)] = 1;
-        REBuilder.write(r'(\w+)\/');
+        REBuilder.write(r'([\w\-]+)\/');
 
       } else if (multiPartRE.hasMatch(segment)) {
 
@@ -134,7 +134,7 @@ class _Handler {
         dataBuilder[m.group(1)] = int.parse(m.group(2));
 
         for (int i = 0; i < int.parse(m.group(2)); i++)
-          REBuilder.write(r'(\w+)\/');
+          REBuilder.write(r'([\w\-]+)\/');
 
       } else {
 
@@ -151,7 +151,7 @@ class _Handler {
   }
 
   // Check handler matches method and path
-  bool isMatch(String method, String path) { 
+  bool isMatch(String method, String path) {
 
     if (method.toLowerCase() != this.method) return false;
     if (!pathRE.hasMatch(path)) return false;
@@ -161,7 +161,7 @@ class _Handler {
 
   // Check that all information passed is valid
   static bool isValid(String method, String path, Function task) {
-    
+
     // Check method
     switch (method) {
 
@@ -176,7 +176,7 @@ class _Handler {
     }
 
     // Check that the whole path is valid
-    RegExp validPathRE = new RegExp(r'^((\/){1}|((\/{1}\:?\w+)+|(\/{1}\:\w+(\{[\.\d]\})))+\/?)$');
+    RegExp validPathRE = new RegExp(r'^((\/){1}|((\/{1}\:?[\w+\-]+)+|(\/{1}\:[\w+\-]+(\{\d{1,2}\})))+\/?)$');
     if (!validPathRE.hasMatch(path)) return false;
 
     // Check that there is no variable parts named '<method>_data'
