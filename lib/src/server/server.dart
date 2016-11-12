@@ -149,6 +149,7 @@ class Server {
       {List<String> defaults: const ['index.html'],
       CacheController cacheController,
       Map<int, String> errorResponses,
+      Map<String, Map<String, Object>> headers,
       String spaDefault}) {
 
     _staticHandler = new _StaticHandler(
@@ -156,6 +157,7 @@ class Server {
         defaults,
         cacheController,
         errorResponses,
+        headers,
         spaDefault);
 
   }

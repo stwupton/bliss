@@ -5,10 +5,12 @@ class _StaticHandler {
   CacheController cacheController;
   List defaults;
   Map<int, String> errorResponses;
+  Map<String, Map<String, Object>> headers;
   String spaDefault;
   Directory webDirectory;
 
   bool get hasCacheController => cacheController != null;
+  bool get hasCustomHeaders => headers != null;
   bool get hasSpaDefault => spaDefault != null;
   bool get hasErrorResponses => errorResponses != null;
 
@@ -17,6 +19,7 @@ class _StaticHandler {
       List defaults,
       [CacheController cacheController,
       Map<int, String> errorResponses,
+      Map<String, Map<String, Object>> headers,
       String spaDefault]) {
 
     webDirectory = normalize(webDirectory);
@@ -28,9 +31,12 @@ class _StaticHandler {
           defaults,
           cacheController,
           errorResponses,
+          headers,
           spaDefault);
 
-    } else throw new Exception("Could not create static handler.");
+    } else {
+      throw new Exception("Could not create static handler.");
+    }
 
   }
 
@@ -39,6 +45,7 @@ class _StaticHandler {
       this.defaults,
       [this.cacheController,
       this.errorResponses,
+      this.headers,
       this.spaDefault]);
 
   Future addToResponse(HttpRequest request, File file) async {
@@ -193,7 +200,7 @@ class _StaticHandler {
 
   }
 
-  void serveFile(HttpRequest request, String path) {
+  void serveFile(HttpRequest request, String path, [Map customHeaders]) {
 
     if (FileSystemEntity.isFileSync(path)) {
 
@@ -212,6 +219,17 @@ class _StaticHandler {
         return;
 
       }
+
+      // Add custom headers to response if defined
+      if (customHeaders != null) {
+        for (String headerKey in customHeaders.keys) {
+          if (customHeaders[headerKey] == null)
+            request.response.headers.removeAll(headerKey);
+          else
+            request.response.headers.set(headerKey, customHeaders[headerKey]);
+        }
+      }
+
 
       addToResponse(request, file)
         .then((_) => request.response.close());
@@ -233,6 +251,10 @@ class _StaticHandler {
     }
 
     String path = normalize(webDirectory.path + request.uri.path);
+
+    Map customHeaders;
+    if (hasCustomHeaders)
+      customHeaders = headers[request.uri.path];
 
     // Find the default file if path points to directory
     if (FileSystemEntity.isDirectorySync(path)) {
@@ -259,7 +281,7 @@ class _StaticHandler {
 
     }
 
-    serveFile(request, path);
+    serveFile(request, path, customHeaders);
 
   }
 
