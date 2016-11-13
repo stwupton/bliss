@@ -26,3 +26,8 @@
 ## 0.2.1
 
 - Fixed server crash when accept-encoding header is not present on incoming `HttpRequest`.
+
+## 0.3.0
+
+- Support for hyphens in handler paths.
+- Can add custom headers to static handler.

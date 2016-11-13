@@ -144,6 +144,18 @@ class Server {
   /// The server will respond with the [spaDefault] file if the server cannot find
   /// a resource matching the URL's path. Therefore, if the [spaDefault] is present,
   /// it replaces the 404 error response if defined in the [errorResponses] Map.
+  ///
+  /// [handlers] parameter if for specifying specific headers to be attached to
+  /// the response when a specific resource is requested. If you want to remove
+  /// a header, then set the value of the header to `null`.
+  ///
+  /// Example:
+  ///
+  ///     new Server()
+  ///       ..setStaticHandler('../build/web/', headers: {'/embed/': {'x-frame-origins': null}})
+  ///       ..start();
+  ///
+  ///
   void setStaticHandler(
       String webDirectory,
       {List<String> defaults: const ['index.html'],
