@@ -50,11 +50,9 @@ class Server {
   /// Example:
   ///
   ///     void main() {
-  ///
   ///       Server server = new Server()
-  ///           ..addHandler('POST', '/example/:multi{3}', (_, HttpRequest request) => ...)
-  ///           ..addHandler('GET', 'test/:single', (Map data, HttpRequest request) => ...);
-  ///
+  ///         ..addHandler('POST', '/example/:multi{3}', (_, HttpRequest request) => ...)
+  ///         ..addHandler('GET', 'test/:single', (Map data, HttpRequest request) => ...);
   ///     }
   void addHandler(String method, String path, Function task) {
     final _Handler handler = new _Handler(method, path, task);
@@ -90,7 +88,12 @@ class Server {
         });
         match.execute(request);
       }
-      return;
+
+      // Return here if there was a match so it does not continue to check the
+      // static handlers.
+      if (matches.length > 0) {
+        return;
+      }
     }
 
     if (_hasStaticHandler && request.method == 'GET') {
