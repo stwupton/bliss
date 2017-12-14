@@ -2,7 +2,7 @@
 
 ## 0.3.1
 
-- Strong mode compliant. 
+- Strong mode compliant.
 
 ## 0.3.0
 
@@ -16,9 +16,9 @@
 ## 0.2.0
 
 - The static handler now supports three more optional parameters;
-- **cacheController**: A function to determine the maximum duration for the browser to cache a static resource.
-- **errorResponses**: A map specifying what static resources to repond with when the server responds with a error code.
-- **spaDefault**: Added for the purpose of serving single page applications. If the server cannot find a resource and `spaDefault` is defined, it will respond with the `spaDefault` file instead and let the client handle the routing.
+  - **cacheController**: A function to determine the maximum duration for the browser to cache a static resource.
+  - **errorResponses**: A map specifying what static resources to repond with when the server responds with a error code.
+  - **spaDefault**: Added for the purpose of serving single page applications. If the server cannot find a resource and `spaDefault` is defined, it will respond with the `spaDefault` file instead and let the client handle the routing.
 
 ## 0.1.5
 
