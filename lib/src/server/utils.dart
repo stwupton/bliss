@@ -11,17 +11,12 @@ Map<String, Duration> _cacheDurations = {
 
 /// A default cache controller to use for static handler.
 Duration defaultCacheController(String filePath) {
-
   for (String key in _cacheDurations.keys) {
-
     String fileName = basename(filePath);
     RegExp re = new RegExp(key);
-
-    if (re.firstMatch(fileName)?.group(0) == fileName)
+    if (re.firstMatch(fileName)?.group(0) == fileName) {
       return _cacheDurations[key];
-
+    }
   }
-
   return null;
-
 }

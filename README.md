@@ -10,32 +10,24 @@ The purpose of this package is to be used internally at Indecks, but to also be 
 
 A simple use case example:
 
-    import 'package:bliss/bliss.dart';
+```dart
+import 'package:bliss/bliss.dart';
 
-    main() {
-      
-      Server server = new Server()
-        ..setStaticHandler(
-            'web',
-            defaults: ['index.html'])
-
-        ..addHandler('GET', '/api/user/:id', (Map data) {
-
-          Map user = {};
-          // query database with `data['id']` and assign it to `user`
-          return user;
-
-        })
-
-        ..addHandler('POST', '/api/post', (Map postData, HttpRequest request) async {
-
-          // store `postData` into database
-          // add cookie to `request`
-
-        })
-
-        ..start();
-    }
+main() {
+  new Server()
+    ..setStaticHandler('web', defaults: ['index.html'])
+    ..addHandler('GET', '/api/user/:id', (Map data) {
+      Map user = {};
+      // query database with `data['id']` and assign it to `user`
+      return user;
+    })
+    ..addHandler('POST', '/api/post', (Map postData, HttpRequest request) async {
+      // store `postData` into database
+      // add cookie to `request`
+    })
+    ..start();
+}
+```
 
 ## Planned Features
 - [x] SSL support
